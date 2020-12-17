@@ -1,0 +1,36 @@
+# Modules
+
++file:qos/acl/test_acls_l3_forwarding.py
++file:qos/test_cos.py
++file:qos/test_qos_save_reboot.py
++file:qos/test_wred.py
++file:routing/BGP/test_bgp_rr_traffic.py
++file:routing/NAT/test_nat.py
++file:routing/NAT/test_nat_reboot_long_run.py
++file:routing/NAT/test_nat_tcp.py
++file:routing/VRF/test_vrf.py
++file:routing/VRF/test_vrf_scale.py
++file:routing/test_arp.py
++file:routing/test_arp_static_route_long_run.py
++file:routing/test_ipv6_link_local.py
++file:routing/test_l3_performance.py
++file:routing/test_ndp.py
++file:sanity/test_sanity_l2.py
++file:sanity/test_sanity_l3.py
++file:system/crm/test_crm.py
++file:system/test_interface.py
++file:system/test_ntp.py
++file:system/test_sflow.py
++file:system/test_snapshot.py
++file:system/threshold/test_threshold.py
+
+#Runtime Arguments
++args:--env SPYTEST_HOOKS_BREAKOUT_UITYPE click
++args:--device-feature-group upstream
++args:--module-init-max-timeout 9000
++args:--tc-max-timeout 5400
++args:--logs-level=debug
+
+#InfraModuleNeededforNodeDownScenarios
++file:batch/test_spytest_infra_1.py
+
