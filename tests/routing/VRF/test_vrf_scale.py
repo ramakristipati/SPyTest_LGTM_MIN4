@@ -10,12 +10,11 @@ import pytest
 import os
 import ipaddress
 
-from spytest import st,utils
+from spytest import st, tgapi
 
 from vrf_vars import * #all the variables used for vrf testcases
 from vrf_vars import data
 import vrf_lib as loc_lib
-from utilities import parallel
 
 import apis.switching.mac as mac_api
 import apis.switching.vlan as vlan_api
@@ -29,9 +28,8 @@ import apis.system.port as port_api
 import apis.system.reboot as reboot_api
 import apis.system.basic as basic_obj
 
-from spytest.tgen.tg import tgen_obj_dict
-from spytest.tgen.tgen_utils import validate_tgen_traffic
-
+from utilities import parallel
+from utilities import common as utils
 
 #Topology:
 #------#TG#----(2links)----#DUT1#----(4links)----#DUT2#----(2links)-----#TG#-------#
@@ -50,8 +48,8 @@ def initialize_topology():
     data.dut2_tg1_ports = [vars.D2T1P1]
     data.tg_dut1_hw_port = vars.T1D1P1
     data.tg_dut2_hw_port = vars.T1D2P1
-    data.tg1 = tgen_obj_dict[vars['tgen_list'][0]]
-    data.tg2 = tgen_obj_dict[vars['tgen_list'][0]]
+    data.tg1 = tgapi.get_chassis(vars)
+    data.tg2 = data.tg1
     data.tg_dut1_p1 = data.tg1.get_port_handle(vars.T1D1P1)
     data.tg_dut2_p1 = data.tg2.get_port_handle(vars.T1D2P1)
     data.d1_p1_intf_v4 = {}
@@ -161,9 +159,7 @@ def base_unconfig():
 @pytest.fixture(scope="function")
 def vrf_fixture_vrf_scale(request,prologue_epilogue):
     yield
-    dict1 = {'vrf_name':['Vrf-red'],'skip_error':True,'config':'no'}
-    parallel.exec_parallel(True, [data.dut1, data.dut2], vrf_api.config_vrf, [dict1, dict1])
-
+    st.log('###### -----Started UnConfig  ------######')
 def test_vrf_scale(vrf_fixture_vrf_scale):
 
     result = 0
@@ -218,7 +214,7 @@ def test_vrf_route_leak():
 
     traffic_details = {'1': {'tx_ports' : [data.tg_dut1_hw_port],'tx_obj' : [data.tg1],'exp_ratio' : [1],'rx_ports' : [data.tg_dut2_hw_port],'rx_obj' : [data.tg2]}}
     data.tg2.tg_traffic_control(action = 'stop', stream_handle = data.stream_list_scale.values())
-    aggrResult = validate_tgen_traffic(traffic_details=traffic_details, mode='aggregate', comp_type='packet_count')
+    aggrResult = tgapi.validate_tgen_traffic(traffic_details=traffic_details, mode='aggregate', comp_type='packet_count')
 
     if not aggrResult:
         st.log('IPv4 Traffic on 1000 VRF with route leak failed')

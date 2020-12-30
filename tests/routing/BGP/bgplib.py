@@ -6,9 +6,7 @@
 import random
 import pprint
 
-from spytest import st, SpyTestDict
-from spytest.tgen.tg import tgen_obj_dict
-from spytest.utils import filter_and_select
+from spytest import st, tgapi, SpyTestDict
 
 import apis.routing.ip as ipapi
 import apis.routing.bgp as bgpapi
@@ -724,7 +722,7 @@ def l3tc_vrfipv4v6_address_leafspine_tg_config_unconfig(config='yes', vrf_type='
         for local, partner, remote in st.get_tg_links(data[device_type]):
             if link <= max_mem:
                 # TG reset.
-                tg = tgen_obj_dict[partner]
+                tg = tgapi.get_chassis_byname(partner)
                 tg.tg_traffic_control(action="reset", port_handle=tg.get_port_handle(remote))
 
                 if config_type == 'ipv4' or config_type == 'all':
@@ -839,7 +837,7 @@ def l3tc_vrfipv4v6_address_leafspine_tg_bgp_config(config='yes', vrf_type='all',
                 bgpapi.config_bgp_multi_neigh_use_peergroup(data[device_type], local_asn=dut_as,
                                                             peer_grp_name='leaf_tg6', remote_asn=tg_as+j-1,
                                                             neigh_ip_list=tg_neigh6_list, family='ipv6', activate=1)
-                
+
 
     else:
         bgpapi.cleanup_bgp_config([data[dut] for dut in data['leaf_routers']+data['spine_routers']])
@@ -938,7 +936,7 @@ def create_routing_interface_on_tg(tg, tg_port, intf_ip_addr, netmask, gateway, 
     :param af:
     :return:
     """
-    tg = tgen_obj_dict[tg]
+    tg = tgapi.get_chassis_byname(tg)
     tg_ph_x = tg.get_port_handle(tg_port)
     config = 'config' if config == 'add' else 'destroy'
     if af == 'ipv4':
@@ -1258,7 +1256,7 @@ def get_route_attribute(output, parameter, **kwargs):
     st.log("GET ROUTE ATTR -- {}".format(output))
     st.log("PARAMS -- {}".format(parameter))
     st.log("KWARGS -- {}".format(kwargs))
-    nw_route = filter_and_select(output, [parameter], kwargs)
+    nw_route = utils.filter_and_select(output, [parameter], kwargs)
     st.log("NW_ROUTE -- {}".format(nw_route))
     if not nw_route:
         st.report_fail("entry_not_found")

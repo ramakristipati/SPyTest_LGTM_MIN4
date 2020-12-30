@@ -1208,6 +1208,10 @@ def config_agentx(dut, config='yes', cli_type=''):
     cmd = config + ' agentx'
     st.config(dut, cmd, type=cli_type)
 
+def report_set_snmp_operation_fail(msg):
+    #st.report_fail('snmp_operation_fail', 'SET', msg)
+    return False
+
 def set_snmp_operation(**kwargs):
     """
     To perform SNMP SET operation
@@ -1226,9 +1230,7 @@ def set_snmp_operation(**kwargs):
     object_type = kwargs.get("objtype")
     object_name = kwargs.get("objname")
     version = kwargs.get("version", "2")
-    connection_obj = kwargs.get("connection_obj")
     filter = kwargs.get("filter", "-Oqv")
-    report=False
 
     command = 'snmpset'
     if version not in ["1", "2"]:
@@ -1262,21 +1264,15 @@ def set_snmp_operation(**kwargs):
                 return result1
             elif "Timeout" in stderr:
                 st.error("SNMP Timeout occurs")
-                if report:
-                    st.report_fail('snmp_operation_fail', 'SET', 'Timeout')
-                return False
+                return report_set_snmp_operation_fail('Timeout')
             elif "No Such Instance currently exists at this OID" in stdout:
                 result = stderr.strip("\n")
                 st.error(result)
-                if report:
-                    st.report_fail('snmp_operation_fail', 'SET', 'No Instance Found')
-                return False
+                return report_set_snmp_operation_fail('No Instance Found')
             else:
                 st.log("SNMP Error: return code = {}".format(pprocess.returncode))
                 st.log("SNMP stdout: {}".format(stdout))
                 st.error("SNMP stderr: {}".format(stderr))
-                if report:
-                    st.report_fail('snmp_operation_fail', 'SET', 'Error')
-                return False
+                return report_set_snmp_operation_fail('Error')
 
     return True

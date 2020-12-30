@@ -63,6 +63,7 @@ def ping(dut, addresses, family='ipv4', **kwargs):
     cli_type = st.get_ui_type(dut, **kwargs)
     cli_type = "klish" if cli_type in ["rest-put", "rest-patch"] else cli_type
     ping_pattern = r'(\d+)\s+packets\s+transmitted,\s+(\d+)\s+received,(.*)\s+(\d+)%\s+packet\s+loss,\s+time\s+(\d+)ms'
+    ping_pattern1 = r'(\d+)\s+bytes\s+from(.*)time=(.*)\s+ms\s+\(DUP\!\)'
     external = kwargs.get("external", False)
 
     # add defaults
@@ -133,12 +134,16 @@ def ping(dut, addresses, family='ipv4', **kwargs):
     else:
         rv = st.config(dut, command, type=cli_type)
     out = re.findall(ping_pattern, rv)
+    out_dup = re.findall(ping_pattern1, rv)
 
     if not out:
         st.error("Failed to get the ping output.")
         return False
     if '0' < out[0][3] <= '100':
         st.error("Ping failed with packet loss.")
+        return False
+    if out_dup:
+        st.error("Ping failed because of duplicate ping reply.")
         return False
     return True
 

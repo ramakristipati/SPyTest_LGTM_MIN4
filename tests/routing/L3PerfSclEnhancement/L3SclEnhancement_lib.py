@@ -2,8 +2,7 @@
 import time
 import datetime
 
-from spytest import st, utils
-from spytest.tgen.tg import tgen_obj_dict
+from spytest import st, tgapi
 
 import apis.routing.bgp as bgp_obj
 
@@ -14,9 +13,10 @@ import apis.routing.arp as arp_api
 
 import apis.routing.vrf as vrf_api
 import apis.common.asic as asicapi
-from utilities import parallel
 
 from L3SclEnhancement_vars import data
+
+from utilities import parallel
 
 vars = dict()
 
@@ -28,10 +28,8 @@ def get_handles():
 
     global vars
     vars = st.ensure_min_topology("D1T1:1","D2T1:1","D1T1:2","D2T1:2" )
-    tg1 = tgen_obj_dict[vars['tgen_list'][0]]
-    tg2 = tgen_obj_dict[vars['tgen_list'][0]]
-    tg3 = tgen_obj_dict[vars['tgen_list'][0]]
-    tg4 = tgen_obj_dict[vars['tgen_list'][0]]
+    tg = tgapi.get_chassis(vars)
+    tg1, tg2, tg3, tg4 = tg, tg, tg, tg
     tg_ph_1 = tg1.get_port_handle(vars.T1D1P1)
     tg_ph_2 = tg2.get_port_handle(vars.T1D2P1)
     tg_ph_3 = tg3.get_port_handle(vars.T1D1P2)
@@ -133,8 +131,8 @@ def tg_vrf_bind(**kwargs):
     if config == '':
         st.log('######------Configure vlans on the PE--CE side-------######')
         for i in range(3):
-            utils.exec_all(True, [[vlan_obj.create_vlan, vars.D1, data.dut1_tg1_vlan[i]], [vlan_obj.create_vlan, vars.D2, data.dut2_tg1_vlan[i]]])
-            utils.exec_all(True,[[vlan_obj.add_vlan_member,vars.D1,data.dut1_tg1_vlan[i],vars.D1T1P1,True,True], [vlan_obj.add_vlan_member,vars.D2,data.dut2_tg1_vlan[i],vars.D2T1P1,True,True]])
+            parallel.exec_all(True, [[vlan_obj.create_vlan, vars.D1, data.dut1_tg1_vlan[i]], [vlan_obj.create_vlan, vars.D2, data.dut2_tg1_vlan[i]]])
+            parallel.exec_all(True,[[vlan_obj.add_vlan_member,vars.D1,data.dut1_tg1_vlan[i],vars.D1T1P1,True,True], [vlan_obj.add_vlan_member,vars.D2,data.dut2_tg1_vlan[i],vars.D2T1P1,True,True]])
             '''
             vlan_obj.create_vlan(vars.D1, data.dut1_tg1_vlan[i]) # Vlan-1, VRF-101, port1
             vlan_obj.add_vlan_member(vars.D1, data.dut1_tg1_vlan[i], vars.D1T1P1, True, True)
@@ -184,8 +182,8 @@ def tg_vrf_bind2(**kwargs):
     if config == '':
         st.log('######------Configure vlans on the PE--CE side-------######')
         for i in range(3):
-            utils.exec_all(True, [[vlan_obj.create_vlan, vars.D1, data.dut1_tg1_vlan2[i]], [vlan_obj.create_vlan, vars.D2, data.dut1_tg1_vlan2[i]]])
-            utils.exec_all(True,[[vlan_obj.add_vlan_member,vars.D1,data.dut1_tg1_vlan2[i],vars.D1T1P2,True,True], [vlan_obj.add_vlan_member,vars.D2,data.dut1_tg1_vlan2[i],vars.D2T1P2,True,True]])
+            parallel.exec_all(True, [[vlan_obj.create_vlan, vars.D1, data.dut1_tg1_vlan2[i]], [vlan_obj.create_vlan, vars.D2, data.dut1_tg1_vlan2[i]]])
+            parallel.exec_all(True,[[vlan_obj.add_vlan_member,vars.D1,data.dut1_tg1_vlan2[i],vars.D1T1P2,True,True], [vlan_obj.add_vlan_member,vars.D2,data.dut1_tg1_vlan2[i],vars.D2T1P2,True,True]])
             '''
             vlan_obj.create_vlan(vars.D1, data.dut1_tg1_vlan2[i]) # Vlan-1, VRF-101, port1
             vlan_obj.add_vlan_member(vars.D1, data.dut1_tg1_vlan2[i], vars.D1T1P2, True, True)
@@ -247,9 +245,9 @@ def dut_vrf_bind(**kwargs):
             dict2 = {'vrf_name':vrf, 'intf_name':'Vlan'+vlan,'skip_error':True}
             parallel.exec_parallel(True, [dut1, dut2], vrf_api.bind_vrf_interface, [dict1, dict2])
 
-            utils.exec_all(True,[[ipfeature.config_ip_addr_interface,dut1,'Vlan'+vlan,ip,data.dut1_dut2_vrf_ip_subnet,'ipv4'], [ipfeature.config_ip_addr_interface,dut2, 'Vlan'+vlan, ip2, data.dut2_dut1_vrf_ip_subnet, 'ipv4']])
+            parallel.exec_all(True,[[ipfeature.config_ip_addr_interface,dut1,'Vlan'+vlan,ip,data.dut1_dut2_vrf_ip_subnet,'ipv4'], [ipfeature.config_ip_addr_interface,dut2, 'Vlan'+vlan, ip2, data.dut2_dut1_vrf_ip_subnet, 'ipv4']])
 
-            utils.exec_all(True,[[ipfeature.config_ip_addr_interface,dut1,'Vlan'+vlan,ipv6,data.dut1_dut2_vrf_ipv6_subnet,'ipv6'], [ipfeature.config_ip_addr_interface,dut2, 'Vlan'+vlan,ipv6_2, data.dut2_dut1_vrf_ipv6_subnet, 'ipv6']])
+            parallel.exec_all(True,[[ipfeature.config_ip_addr_interface,dut1,'Vlan'+vlan,ipv6,data.dut1_dut2_vrf_ipv6_subnet,'ipv6'], [ipfeature.config_ip_addr_interface,dut2, 'Vlan'+vlan,ipv6_2, data.dut2_dut1_vrf_ipv6_subnet, 'ipv6']])
 
             '''
             vrf_api.bind_vrf_interface(dut = dut1, vrf_name = vrf, intf_name = 'Vlan'+vlan, skip_error = True)

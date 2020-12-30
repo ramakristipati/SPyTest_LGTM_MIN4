@@ -1,13 +1,14 @@
 # This file contains the list of API's which performs User operations.
 # Author : Prudvi Mangadu (prudvi.mangadu@broadcom.com)
 import re
-from spytest import st
-from utilities.common import filter_and_select, make_list
-from apis.security.rbac import add_user
-from apis.system.rest import config_rest, delete_rest
 import os, base64
 from crypt import crypt
 
+from spytest import st
+from apis.security.rbac import add_user
+from apis.system.rest import config_rest, delete_rest
+
+from utilities.common import make_list
 
 def config_user(dut, username, mode='add', cli_type=""):
     """
@@ -73,8 +74,7 @@ def verify(dut, *argv, **kwargs):
         verify(vars.D1, 'group_list', verify_list=['admin','operator'])
         verify(vars.D1, user_group='admin', verify_list=[{'group':'admin'}])
     """
-    cli_type = kwargs.get("cli_type","")
-    cli_type = st.get_ui_type(dut, cli_type=cli_type)
+    #cli_type = st.get_ui_type(dut, **kwargs)
     result = True
     if not kwargs.get('verify_list'):
         st.error("Mandatory parameter -verify_list is missing")
@@ -82,11 +82,6 @@ def verify(dut, *argv, **kwargs):
     out = show(dut, *argv, **kwargs)
     if 'logged_users' in argv or kwargs.get('user_group'):
         for each in make_list(kwargs.get('verify_list')):
-            if cli_type == "click":
-                if not filter_and_select(out, None, each):
-                    st.log("{} - {} is not match".format(each, out))
-                    result = False
-            else:
                 out[0]['secondary_group'] = re.findall(r'\(([^)]+)', out[0]['secondary_group'])
                 if each['group'] == 'sudo':
                     each['group'] = 'operator'

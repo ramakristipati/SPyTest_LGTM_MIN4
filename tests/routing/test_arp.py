@@ -285,7 +285,7 @@ def test_ft_arp_clear_cache_static_and_dynamic_entries(fixture_ft_arp_clear_cach
     s1=tg.tg_traffic_config(port_handle= tg_handler["tg_ph_2"],mode='create',rate_pps=10,
         mac_src=data.t2d1_mac_addr,transmit_mode="continuous",mac_dst=d1_mac_addr,
         l2_encap='ethernet_ii_vlan',l3_protocol="ipv4",ip_dst_addr=data.t1d1_ip_addr,
-        ip_src_addr=data.t2d1_ip_addr,vlan_id=data.vlan_1,vlan="enable")
+        ip_src_addr=data.t2d1_ip_addr,vlan_id=data.vlan_1,vlan="enable",port_handle2=tg_handler["tg_ph_1"])
     s2=tg.tg_traffic_config(port_handle= tg_handler["tg_ph_1"],mode='create',rate_pps=10,
         mac_src=data.t1d1_mac_addr,transmit_mode="continuous",mac_dst=d1_mac_addr,
         l2_encap='ethernet_ii_vlan',l3_protocol="ipv4",ip_dst_addr=data.t2d1_ip_addr,
@@ -325,9 +325,10 @@ def test_ft_arp_clear_cache_static_and_dynamic_entries(fixture_ft_arp_clear_cach
             'exp_ratio': [1],
             'rx_ports': [vars.T1D1P1],
             'rx_obj': [tg],
+            'stream_list': [[s1['stream_id']]]
         }
     }
-    if not tgapi.validate_tgen_traffic(traffic_details=traffic_details, mode='aggregate', comp_type='packet_count'):
+    if not tgapi.validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count'):
         st.report_fail("traffic_verification_failed")
     else:
         st.log("traffic verification passed")

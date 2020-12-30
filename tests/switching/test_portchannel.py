@@ -14,6 +14,7 @@ import apis.routing.ip as ip_obj
 import apis.routing.arp as arp_obj
 import apis.system.port as port_obj
 import apis.system.rest as rest_obj
+import spytest.utils as utils
 
 from utilities.parallel import exec_all, exec_parallel, ensure_no_exception
 from utilities.common import ExecAllFunc
@@ -53,6 +54,7 @@ def portchannel_module_hooks(request):
     data.my_dut_list = st.get_dut_names()[0:2]
     data.dut1 = st.get_dut_names()[0]
     data.dut2 = st.get_dut_names()[1]
+    data.counters_threshold = 15
     data.members_dut1 = [vars.D1D2P1, vars.D1D2P2, vars.D1D2P3, vars.D1D2P4]
     data.members_dut2 = [vars.D2D1P1, vars.D2D1P2, vars.D2D1P3, vars.D2D1P4]
     data.rest_url = "/restconf/data/sonic-portchannel:sonic-portchannel"
@@ -103,6 +105,9 @@ def module_unconfig():
 def portchannel_func_hooks(request):
     data.tg.tg_traffic_control(action='reset', port_handle=data.tg_ph_1)
     if st.get_func_name(request) == 'test_ft_portchannel_behavior_with_tagged_traffic':
+        verify_portchannel_status()
+    elif st.get_func_name(request) == 'test_member_status_after_portch_down':
+        st.log("for reference")
         verify_portchannel_status()
     elif st.get_func_name(request) == 'test_ft_untagged_traffic_on_portchannel':
         config_test_ft_portchannel_with_new_member_and_untagged_traffic()
@@ -600,6 +605,162 @@ def test_ft_portchannel_behavior_with_tagged_traffic():
     st.report_pass("test_case_passed")
 
 
+def test_member_status_after_portch_down():
+    issue=0
+    stream = data.tg.tg_traffic_config(port_handle=data.tg_ph_1, mode='create', length_mode='fixed', frame_size=72,
+              mac_src='00:01:00:00:00:01', mac_src_step='00:00:00:00:00:01', mac_src_mode='increment', mac_src_count=200,
+              mac_dst='00:02:00:00:00:02', mac_dst_step='00:00:00:00:00:01', mac_dst_mode='increment', mac_dst_count=200,
+              rate_pps=2000, l2_encap='ethernet_ii_vlan', vlan="enable", vlan_id=data.vid, transmit_mode='continuous')
+    data.streams['D1T1_SD_Mac_Hash1'] = stream['stream_id']
+    clear_intf_counters_using_thread([vars.D1, vars.D2])
+    data.tg.tg_traffic_control(action='run', stream_handle=data.streams['D1T1_SD_Mac_Hash1'], enable_arp=0)
+    st.wait(2)
+    exec_parallel(True, [vars.D1, vars.D2], intf_obj.show_interface_counters_all, [None, None])
+    #############Test scenario 1 ######################
+    st.log("Shutdown one interface, config save reload and re-veriffy the interface status")
+    if not intf_obj.interface_operation(data.dut1, vars.D1D2P1, 'shutdown', skip_verify=False):
+        st.report_fail('interface_admin_shut_down_fail',vars.D1D2P1 )
+    st.wait(2)
+    if not utils.poll_wait(intf_obj.verify_interface_status, 5, vars.D1,vars.D1D2P1, 'admin', 'down'):
+        issue+=1
+    clear_intf_counters_using_thread([vars.D1, vars.D2])
+    verify_traffic_hashed_or_not(vars.D1, vars.D1D2P1, 100)
+    st.log("performing Config save")
+    config_save_reload([vars.D1, vars.D2])
+    st.log("Verifying interfaces")
+    if not utils.poll_wait(intf_obj.verify_interface_status, 5, vars.D1,vars.D1D2P1, 'admin', 'down'):
+        issue+=1
+    st.log("issue counter : {}".format(issue))
+    if not intf_obj.interface_operation(vars.D1, [data.portchannel_name,vars.D1D2P1], 'startup', skip_verify=False):
+        st.report_fail('interface_admin_startup_fail', data.portchannel_name)
+    st.wait(2)
+    st.log("Re-Verifying interfaces after bringing up portchannel")
+    if not utils.poll_wait(intf_obj.verify_interface_status, 5, vars.D1,vars.D1D2P1, 'admin', 'up'):
+        issue+=1
+    st.log("issue counter : {}".format(issue))
+    clear_intf_counters_using_thread([vars.D1, vars.D2])
+    verify_traffic_hashed_or_not(vars.D1, vars.D1D2P1, 100)
+    #############Test scenario 2 ######################
+    st.log("Shutdown the port channel and verify the members admin status")
+    if not intf_obj.interface_operation(data.dut1, data.portchannel_name, 'shutdown', skip_verify=False):
+        st.report_fail('interface_admin_shut_down_fail', data.portchannel_name)
+    st.wait(2)
+    if utils.poll_wait(intf_obj.verify_interface_status, 5, vars.D1, data.members_dut1, 'admin', 'down'):
+        issue+=1
+    st.log("issue counter : {}".format(issue))
+    st.log("read interface counters")
+    rx_counters = intf_obj.get_interface_counters(vars.D1, vars.D1D2P1, "rx_ok")
+    tx_counters = intf_obj.get_interface_counters(vars.D1, vars.D1D2P1, "tx_ok")
+    # process interface counters
+    p1_rcvd, p2_txmt = 0, 0
+    for i in rx_counters: p1_rcvd = int(i['rx_ok'].replace(",",""))
+    for i in tx_counters: p2_txmt = int(i['tx_ok'].replace(",",""))
+    diff_count = abs(p1_rcvd - p2_txmt)
+    st.log("ingress rx_ok = {} egress tx_ok = {} diff = {}".format(p1_rcvd, p2_txmt, diff_count))
+
+    # verify interface counters
+    if not p1_rcvd == 0: st.report_fail("msg", "rx_ok is invalid")
+    #if p2_txmt == 0: st.report_fail("msg", "tx_ok is invalid")
+    #if not diff_count < data.counters_threshold: st.report_fail("msg", "unexpected counter values")
+    #############Test scenario 3 ######################
+    st.log("Add member to the shutdown portchannel and verify interface admin and oper status")
+    if not portchannel_obj.add_portchannel_member(vars.D1, data.portchannel_name, vars.D1D2P5):
+        st.report_fail('add_members_to_portchannel_failed', vars.D1D2P5, data.portchannel_name, vars.D1)
+    if not utils.poll_wait(intf_obj.verify_interface_status,5,vars.D1, vars.D1D2P5, 'admin', 'up'):
+        issue+=1
+    st.log("issue counter : {}".format(issue))
+    st.log("Shutdown the portchannel and verify the member oper status")
+    if not utils.poll_wait(intf_obj.verify_interface_status,5,vars.D1, [vars.D1D2P1, vars.D1D2P2], 'oper', 'down'):
+        issue+=1
+    st.log("issue counter : {}".format(issue))
+    #############Test scenario 4 ######################
+    st.log("Remove member from the portchannel and verify member status")
+    if not portchannel_obj.delete_portchannel_member(vars.D1, data.portchannel_name, vars.D1D2P5):
+        st.report_fail('portchannel_member_delete_failed', data.portchannel_name)
+    if portchannel_obj.verify_portchannel_and_member_status(vars.D1, data.portchannel_name, vars.D1D2P5):
+        st.report_fail('portchannel_member_verification_failed', data.portchannel_name, vars.D1, vars.D1D2P5)
+    st.wait(2)
+    st.log("Unshut the portchannel")
+    if not intf_obj.interface_operation(vars.D1, data.portchannel_name, 'startup', skip_verify=False):
+        st.report_fail('interface_admin_startup_fail', data.portchannel_name)
+    verify_traffic_hashed_or_not(vars.D1, data.members_dut1, 300)
+    #############Test scenario 5 ######################
+    st.log("Shutdown member port of a LAG while traffic flowing through that port, shutdown the LAG and no shutdown the LAG and verify that the port admin status intact")
+    if not intf_obj.interface_operation(data.dut1, vars.D1D2P1, 'shutdown', skip_verify=False):
+        st.report_fail('interface_admin_shut_down_fail',vars.D1D2P1 )
+    st.wait(2)
+    if not intf_obj.interface_operation(data.dut1, data.portchannel_name, 'shutdown', skip_verify=False):
+        st.report_fail('interface_admin_shut_down_fail', data.portchannel_name)
+    st.wait(2)
+    if not intf_obj.interface_operation(data.dut1, data.portchannel_name, 'no shutdown', skip_verify=False):
+        st.report_fail('interface_admin_shut_down_fail', data.portchannel_name)
+    st.wait(2)
+    if not utils.poll_wait(intf_obj.verify_interface_status, 5, vars.D1,vars.D1D2P1, 'admin', 'down'):
+        issue+=1
+    st.log("issue counter : {}".format(issue))
+    st.log("read interface counters")
+    clear_intf_counters_using_thread([vars.D1, vars.D2])
+    rx_counters = intf_obj.get_interface_counters(vars.D1, vars.D1D2P1, "rx_ok")
+    tx_counters = intf_obj.get_interface_counters(vars.D1, vars.D1D2P1, "tx_ok")
+    # process interface counters
+    p1_rcvd, p2_txmt = 0, 0
+    for i in rx_counters: p1_rcvd = int(i['rx_ok'].replace(",",""))
+    for i in tx_counters: p2_txmt = int(i['tx_ok'].replace(",",""))
+    diff_count = abs(p1_rcvd - p2_txmt)
+    st.log("ingress rx_ok = {} egress tx_ok = {} diff = {}".format(p1_rcvd, p2_txmt, diff_count))
+
+    # verify interface counters
+    if not p1_rcvd == 0: st.report_fail("msg", "rx_ok is invalid")
+    #if p2_txmt == 0: st.report_fail("msg", "tx_ok is invalid")
+    #if not diff_count < data.counters_threshold: st.report_fail("msg", "unexpected counter values")
+
+    if not intf_obj.interface_operation(vars.D1, data.portchannel_name, 'startup', skip_verify=False):
+        st.report_fail('interface_admin_startup_fail', data.portchannel_name)
+    st.wait(2)
+    if not intf_obj.interface_operation(data.dut1, data.members_dut1, 'startup', skip_verify=False):
+        st.report_fail('interface_admin_shut_down_fail',vars.D1D2P1 )
+    st.wait(2)
+    #############Test scenario 6 ######################
+    st.log("Shut and unshut the portchannel and verify traffic")
+    if not intf_obj.interface_operation(data.dut1, data.portchannel_name, 'shutdown', skip_verify=False):
+        st.report_fail('interface_admin_shut_down_fail', data.portchannel_name)
+    st.wait(2)
+    if not utils.poll_wait(intf_obj.verify_interface_status,5,vars.D1, [vars.D1D2P1, vars.D1D2P2], 'admin', 'up'):
+        issue+=1
+    st.log("issue counter : {}".format(issue))
+    data.int_counter1 = verify_traffic_hashed_or_not(vars.D1, data.members_dut1, 100)
+    data.int_counter2 = verify_traffic_hashed_or_not(vars.D1, data.members_dut1, 100)
+    if not (((data.int_counter1[vars.D1D2P1] + 100) >= data.int_counter2[vars.D1D2P1]) and
+            ((data.int_counter1[vars.D1D2P2] + 100) >= data.int_counter2[vars.D1D2P2]) and
+            ((data.int_counter1[vars.D1D2P3] + 100) >= data.int_counter2[vars.D1D2P3]) and
+            ((data.int_counter1[vars.D1D2P4] + 100) >= data.int_counter2[vars.D1D2P4])):
+        data.return_value = 3
+        st.report_fail('traffic_hashed', vars.D1)
+    st.log('Administratively Enable portchannel in DUT1')
+    if not intf_obj.interface_operation(vars.D1, data.portchannel_name, 'startup', skip_verify=False):
+        st.report_fail('interface_admin_startup_fail', data.portchannel_name)
+    if not intf_obj.interface_operation(data.dut1, data.members_dut1, 'startup', skip_verify=False):
+        st.report_fail('interface_admin_shut_down_fail',vars.D1D2P1 )
+    st.wait(2)
+    st.log('Verify that whether the portchannel is Up or not')
+    if not portchannel_obj.verify_portchannel_and_member_status(vars.D1, data.portchannel_name, data.members_dut1):
+        st.report_fail('portchannel_state_fail', data.portchannel_name, vars.D1, 'up')
+    if not portchannel_obj.verify_portchannel_member_state(data.dut1, data.portchannel_name, data.members_dut1,
+                                                           state='up'):
+        st.report_fail("portchannel_member_verification_failed after portchannel flap")
+    data.int_counter3 = verify_traffic_hashed_or_not(vars.D1, data.members_dut1, 300)
+    if not ((data.int_counter3[vars.D1D2P1] > data.int_counter2[vars.D1D2P1]) and
+            (data.int_counter3[vars.D1D2P2] > data.int_counter2[vars.D1D2P2]) and
+            (data.int_counter3[vars.D1D2P3] > data.int_counter2[vars.D1D2P3]) and
+            (data.int_counter3[vars.D1D2P4] > data.int_counter2[vars.D1D2P4])):
+        st.report_fail('traffic_not_hashed', vars.D1)
+    st.log("issue counter : {}".format(issue))
+    if issue>0:
+        st.report_fail("portchannel_member_verification_failed")
+    else:
+        st.report_pass('test_case_passed')
+
+
 @pytest.mark.community
 @pytest.mark.community_pass
 def test_ft_untagged_traffic_on_portchannel():
@@ -618,6 +779,7 @@ def test_ft_untagged_traffic_on_portchannel():
     exec_parallel(True, [vars.D1, vars.D2], intf_obj.show_interface_counters_all, [None,None])
     verify_traffic_hashed_or_not(vars.D1, data.members_dut1 , 400)
     st.report_pass('test_case_passed')
+
 
 
 @pytest.mark.l3_lag_hash

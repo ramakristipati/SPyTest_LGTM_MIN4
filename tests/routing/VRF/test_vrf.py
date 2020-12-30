@@ -5,26 +5,23 @@
 #################################################################################
 
 import pytest
-from spytest import st,utils
+from spytest import st, tgapi
 
 from vrf_vars import * #all the variables used for vrf testcase
 from vrf_vars import data
 import vrf_lib as loc_lib
-from utilities import parallel
+
 from apis.system import basic
-
 import apis.switching.portchannel as pc_api
-
 import apis.routing.ip as ip_api
 import apis.routing.vrf as vrf_api
 import apis.routing.bgp as bgp_api
 import apis.routing.ip_bgp as ip_bgp
 import apis.routing.arp as arp_api
-
 import apis.system.reboot as reboot_api
 
-from spytest.tgen.tg import tgen_obj_dict
-from spytest.tgen.tgen_utils import validate_tgen_traffic
+from utilities import parallel
+from utilities import common as utils
 
 
 #Topology:
@@ -44,8 +41,8 @@ def initialize_topology():
     data.dut2_tg1_ports = [vars.D2T1P1]
     data.tg_dut1_hw_port = vars.T1D1P1
     data.tg_dut2_hw_port = vars.T1D2P1
-    data.tg1 = tgen_obj_dict[vars['tgen_list'][0]]
-    data.tg2 = tgen_obj_dict[vars['tgen_list'][0]]
+    data.tg1 = tgapi.get_chassis(vars)
+    data.tg2 = data.tg1
     data.tg_dut1_p1 = data.tg1.get_port_handle(vars.T1D1P1)
     data.tg_dut2_p1 = data.tg2.get_port_handle(vars.T1D2P1)
     data.d1_p1_intf_v4 = {}
@@ -218,7 +215,7 @@ def lib_test_VrfFun003():
         result += 1
     traffic_details = {'1': {'tx_ports' : [data.tg_dut2_hw_port],'tx_obj' : [data.tg2],'exp_ratio' : [1],'rx_ports' : [data.tg_dut1_hw_port],'rx_obj' : [data.tg1],'stream_list' : [[data.stream_list.get('ve_v4_stream')]]}}
     data.tg2.tg_traffic_control(action = 'stop', stream_handle = data.stream_list.get('ve_v4_stream'))
-    aggrResult = validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
+    aggrResult = tgapi.validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
     if not aggrResult:
         st.log('IPv4 Traffic on VRF-102 bound to virtual interfaces failed')
         result += 1
@@ -232,7 +229,7 @@ def lib_test_VrfFun003():
         result += 1
     traffic_details = {'1': {'tx_ports' : [data.tg_dut2_hw_port],'tx_obj' : [data.tg2],'exp_ratio' : [1],'rx_ports' : [data.tg_dut1_hw_port],'rx_obj' : [data.tg1],'stream_list' : [[data.stream_list.get('ve_v6_stream')]]}}
     data.tg2.tg_traffic_control(action = 'stop', stream_handle = data.stream_list.get('ve_v6_stream'))
-    aggrResult = validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
+    aggrResult = tgapi.validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
     if not aggrResult:
         st.log('IPv4 Traffic on VRF-102 bound to virtual interfaces failed')
         result += 1
@@ -284,7 +281,7 @@ def lib_test_VrfFun004():
         result += 1
     traffic_details = {'1': {'tx_ports' : [data.tg_dut2_hw_port],'tx_obj' : [data.tg2],'exp_ratio' : [1],'rx_ports' : [data.tg_dut1_hw_port],'rx_obj' : [data.tg1],'stream_list' : [[data.stream_list.get('pc_v4_stream')]]}}
     data.tg2.tg_traffic_control(action = 'stop', stream_handle = [data.stream_list.values()])
-    aggrResult = validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
+    aggrResult = tgapi.validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
     if not aggrResult:
         st.log('IPv4 Traffic on VRF-103 bound to port channel failed')
         result += 1
@@ -298,7 +295,7 @@ def lib_test_VrfFun004():
         result += 1
     traffic_details = {'1': {'tx_ports' : [data.tg_dut2_hw_port],'tx_obj' : [data.tg2],'exp_ratio' : [1],'rx_ports' : [data.tg_dut1_hw_port],'rx_obj' : [data.tg1],'stream_list' : [[data.stream_list.get('pc_v6_stream')]]}}
     data.tg2.tg_traffic_control(action = 'stop', stream_handle = data.stream_list.get('pc_v6_stream'))
-    aggrResult = validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
+    aggrResult = tgapi.validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
     if not aggrResult:
         st.log('IPv6 Traffic on VRF-103 bound to port channel failed')
         result += 1
@@ -393,7 +390,7 @@ def test_VrfFun_07_08(vrf_fixture_tc_07_08):
         result += 1
     traffic_details = {'1': {'tx_ports' : [data.tg_dut2_hw_port],'tx_obj' : [data.tg2],'exp_ratio' : [1],'rx_ports' : [data.tg_dut1_hw_port],'rx_obj' : [data.tg1],'stream_list' : [[data.stream_list.get('pc_v6_stream')]]}}
     data.tg2.tg_traffic_control(action = 'stop', stream_handle = data.stream_list.get('pc_v6_stream'))
-    aggrResult = validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
+    aggrResult = tgapi.validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
     if not aggrResult:
         st.log('IPv6 Traffic on Port channel failed')
         result += 1
@@ -504,7 +501,7 @@ def test_VrfFun_31_43(vrf_fixture_tc_31_43):
     data.tg2.tg_traffic_control(action = 'run', stream_handle = data.stream_list.get('pc_v6_stream'), duration = '2')
     traffic_details = {'1': {'tx_ports' : [data.tg_dut2_hw_port],'tx_obj' : [data.tg2],'exp_ratio' : [1],'rx_ports' : [data.tg_dut1_hw_port],'rx_obj' : [data.tg1],'stream_list' : [[data.stream_list.get('pc_v6_stream')]]}}
     data.tg2.tg_traffic_control(action = 'stop', stream_handle = data.stream_list.get('pc_v6_stream'))
-    aggrResult = validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
+    aggrResult = tgapi.validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
     if not aggrResult:
         st.log('IPv6 Traffic on VRF-103 failed')
         result += 1
@@ -512,7 +509,7 @@ def test_VrfFun_31_43(vrf_fixture_tc_31_43):
     data.tg2.tg_traffic_control(action = 'run', stream_handle = data.stream_list.get('phy_v4_stream'), duration = '2')
     traffic_details = {'1': {'tx_ports' : [data.tg_dut2_hw_port],'tx_obj' : [data.tg2],'exp_ratio' : [1],'rx_ports' : [data.tg_dut1_hw_port],'rx_obj' : [data.tg1],'stream_list' : [[data.stream_list.get('phy_v4_stream')]]}}
     data.tg2.tg_traffic_control(action = 'stop', stream_handle = data.stream_list.get('phy_v4_stream'))
-    aggrResult = validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
+    aggrResult = tgapi.validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
     if not aggrResult:
         st.log('IPv4 Traffic on VRF-101 failed')
         result += 1
@@ -621,6 +618,7 @@ def test_VrfFun_28_36_43_47(vrf_fixture_tc_28_36_43_47):
         dict1 = {'vrf_name':vrf_name[1],'local_as':dut1_as[1],'peergroup':'peergroup_v6','config_type_list':['peergroup'],'remote_as':dut2_as[1],'neighbor':nbr_1,'addr_family':'ipv6'}
         dict2 = {'vrf_name':vrf_name[1],'local_as':dut2_as[1],'peergroup':'peergroup_v6','config_type_list':['peergroup'],'remote_as':dut1_as[1],'neighbor':nbr_2,'addr_family':'ipv6'}
         parallel.exec_parallel(True, [data.dut1, data.dut2], bgp_api.config_bgp, [dict1, dict2])
+    st.wait(30,'added delay for the bgp retry timer')
     if not ip_bgp.verify_bgp_neighbor(data.dut1, neighborip = dut2_dut1_vrf_ip[1], state='Established', vrf = vrf_name[1]):
         st.log('IPv6 IBGP neighbor did not come up on VRF-102 after peer-group configuration')
         result += 1
@@ -628,7 +626,7 @@ def test_VrfFun_28_36_43_47(vrf_fixture_tc_28_36_43_47):
     data.tg2.tg_traffic_control(action = 'run', stream_handle = data.stream_list.get('ve_v4_stream'), duration = '2')
     traffic_details = {'1': {'tx_ports' : [data.tg_dut2_hw_port],'tx_obj' : [data.tg2],'exp_ratio' : [1],'rx_ports' : [data.tg_dut1_hw_port],'rx_obj' : [data.tg1],'stream_list' : [[data.stream_list.get('ve_v4_stream')]]}}
     data.tg2.tg_traffic_control(action = 'stop', stream_handle = data.stream_list.get('ve_v4_stream'))
-    aggrResult = validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
+    aggrResult = tgapi.validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
     if not aggrResult:
         st.log('IPv4 Traffic on VRF-102 failed after peer-group configuration')
         result += 1

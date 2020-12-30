@@ -5,11 +5,10 @@
 
 #################################################################################
 
-from spytest import st,utils
+from spytest import st, tgapi
 
 from vrf_vars import * #all the variables used for vrf testcases
 from vrf_vars import data
-from utilities import parallel
 
 import apis.switching.portchannel as pc_api
 import apis.switching.vlan as vlan_api
@@ -18,8 +17,8 @@ import apis.routing.ip as ip_api
 import apis.routing.vrf as vrf_api
 import apis.routing.bgp as bgp_api
 
-from spytest.tgen.tgen_utils import validate_tgen_traffic, tg_bgp_config
-
+from utilities import parallel
+from utilities import common as utils
 
 def vrf_base_config():
     vrf_config()
@@ -672,11 +671,11 @@ def pump_bgp_routes(**kwargs):
             d1_p1_v4_route = {'mode':'add','num_routes':tg_dut1_p1_v4_routes, 'as_path':'as_seq:1', 'prefix':tg_dut1_p1_v4_prefix}
             d1_p1_v4_start = {'mode':'start'}
             intf_handle = data.d1_p1_intf_v4.get(vlan)
-            # bgp_router = tg_bgp_config(tg = data.tg1, handle = intf_handle['handle'][0], conf_var  = d1_p1_v4_config, route_var = d1_p1_v4_route, ctrl_var  = d1_p1_v4_start)
-            bgp_router = tg_bgp_config(tg = data.tg1, handle = intf_handle['handle'], conf_var  = d1_p1_v4_config, route_var = d1_p1_v4_route, ctrl_var  = d1_p1_v4_start)
+            # bgp_router = tgapi.tg_bgp_config(tg = data.tg1, handle = intf_handle['handle'][0], conf_var  = d1_p1_v4_config, route_var = d1_p1_v4_route, ctrl_var  = d1_p1_v4_start)
+            bgp_router = tgapi.tg_bgp_config(tg = data.tg1, handle = intf_handle['handle'], conf_var  = d1_p1_v4_config, route_var = d1_p1_v4_route, ctrl_var  = d1_p1_v4_start)
             st.log("DUT1 PORT1 BGP_HANDLE: "+str(bgp_router))
 
-            # bgp_router = tg_bgp_config(tg = data.tg1, port_handle = data.tg_dut1_p1, mode = 'enable', ip_version = 4, intf_ip_addr = tg1_dut1_vrf_ip[0],gateway = dut1_tg1_vrf_ip[0], local_as = 300, remote_as = dut1_as[0], next_hop_ip = dut1_tg1_vrf_ip[0])
+            # bgp_router = tgapi.tg_bgp_config(tg = data.tg1, port_handle = data.tg_dut1_p1, mode = 'enable', ip_version = 4, intf_ip_addr = tg1_dut1_vrf_ip[0],gateway = dut1_tg1_vrf_ip[0], local_as = 300, remote_as = dut1_as[0], next_hop_ip = dut1_tg1_vrf_ip[0])
 
             data.d1_p1_bgp_v4.update({vlan:bgp_router})
         else:
@@ -694,8 +693,8 @@ def pump_bgp_routes(**kwargs):
             d1_p1_v6_route = {'mode':'add', 'ip_version':'6', 'num_routes':tg_dut1_p1_v6_routes, 'as_path':'as_seq:1', 'prefix':tg_dut1_p1_v6_prefix}
             d1_p1_v6_start = {'mode':'start'}
             intf_handle = data.d1_p1_intf_v6.get(vlan)
-            #bgp_router = tg_bgp_config(tg = data.tg1, handle = intf_handle['handle'][0], conf_var  = d1_p1_v6_config, route_var = d1_p1_v6_route, ctrl_var  = d1_p1_v6_start)
-            bgp_router = tg_bgp_config(tg = data.tg1, handle = intf_handle['handle'], conf_var  = d1_p1_v6_config, route_var = d1_p1_v6_route, ctrl_var  = d1_p1_v6_start)
+            #bgp_router = tgapi.tg_bgp_config(tg = data.tg1, handle = intf_handle['handle'][0], conf_var  = d1_p1_v6_config, route_var = d1_p1_v6_route, ctrl_var  = d1_p1_v6_start)
+            bgp_router = tgapi.tg_bgp_config(tg = data.tg1, handle = intf_handle['handle'], conf_var  = d1_p1_v6_config, route_var = d1_p1_v6_route, ctrl_var  = d1_p1_v6_start)
             data.d1_p1_bgp_v6.update({vlan:bgp_router})
 
 def create_streams_all_vrf(**kwargs):
@@ -778,7 +777,7 @@ def verify_traffic_all_vrfs(**kwargs):
     if stream_id == 'all':
         # traffic_details = {'1': {'tx_ports' : [vars.T1D2P1],'tx_obj' : [data.tg2],'exp_ratio' : [1],'rx_ports' : [vars.T1D1P1],'rx_obj' : [data.tg1],'stream_list' : [list(data.stream_list.values())]}}
         traffic_details = {'1': {'tx_ports' : [data.tg_dut2_hw_port],'tx_obj' : [data.tg2],'exp_ratio' : [1],'rx_ports' : [data.tg_dut1_hw_port],'rx_obj' : [data.tg1],'stream_list' : [data.stream_list.values()]}}
-        aggrResult = validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
+        aggrResult = tgapi.validate_tgen_traffic(traffic_details=traffic_details, mode='streamblock', comp_type='packet_count')
         return aggrResult
 
 def clear_tg(**kwargs):

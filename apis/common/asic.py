@@ -71,7 +71,7 @@ def get_counters(dut, interface=None, skip_tmpl=False):
 
 def get_ipv4_route_count(dut, timeout=120):
     command = 'bcmcmd "l3 defip show" | wc -l'
-    output = bcm_show(dut, command, skip_tmpl=True, max_time=timeout)
+    output = bcm_show(dut, command, max_time=timeout)
     x = re.search(r"\d+", output)
     if x:
         return int(x.group()) - 5
@@ -79,23 +79,20 @@ def get_ipv4_route_count(dut, timeout=120):
         return -1
 
 def get_ipv6_route_count(dut, timeout=120):
-    command = 'sudo bcmcmd "l3 ip6route show" | wc -l'
-    output = st.show(dut, command, skip_tmpl=True, max_time=timeout)
+    command = 'bcmcmd "l3 ip6route show" | wc -l'
+    output = bcm_show(dut, command, max_time=timeout)
     x = re.search(r"\d+", output)
     if x:
         return int(x.group()) - 7
     else:
         return -1
 
-def bcmcmd_show_ps(dut):
-    return bcm_show(dut, 'bcmcmd "ps"')
-
 def get_pmap(dut):
     command = 'bcmcmd "show pmap"'
-    return bcm_show(dut, command)
+    return bcm_show(dut, command, skip_tmpl=False)
 
 def exec_search(dut,command,param_list,match_dict,**kwargs):
-    output = bcm_show(dut, 'bcmcmd "{}"'.format(command))
+    output = bcm_show(dut, 'bcmcmd "{}"'.format(command), skip_tmpl=False)
     if not output:
         st.error("output is empty")
         return False

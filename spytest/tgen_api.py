@@ -48,6 +48,10 @@ def get_chassis(vars=None, index=0):
     from spytest.tgen.tg import get_chassis as tgen_get_chassis
     return tgen_get_chassis(tg_names[index])
 
+def get_chassis_byname(name):
+    from spytest.tgen.tg import get_chassis as tgen_get_chassis
+    return tgen_get_chassis(name)
+
 def is_soft_tgen(vars=None):
     tg = get_chassis(vars)
     return (tg.tg_type == "scapy")

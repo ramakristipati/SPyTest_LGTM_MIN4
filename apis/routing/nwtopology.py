@@ -3,8 +3,7 @@
 
 import copy
 
-from spytest import st, SpyTestDict, cutils, putils
-from spytest.tgen.tg import tgen_obj_dict
+from spytest import st, SpyTestDict, cutils, putils, tgapi
 
 import apis.routing.ip as ipapi
 import apis.routing.vrf as vrfapi
@@ -5070,7 +5069,7 @@ class TOPOLOGY:
 
         for dut in dut_list :
             tb_dut = nw_topo[dut]['device']
-            tg = tgen_obj_dict[tb_dut]
+            tg = tgapi.get_chassis_byname(tb_dut)
 
             for _, link_data in nw_topo[dut]['intf'].items():
                 if link_data['type'] == 'LBK':
@@ -5176,7 +5175,7 @@ class TOPOLOGY:
         link_data = nw_topo[dut]['intf'][link_name]
         tb_if = link_data['if']
 
-        tg = tgen_obj_dict[tb_dut]
+        tg = tgapi.get_chassis_byname(tb_dut)
         tg_port_handle = tg.get_port_handle(tb_if)
 
         for afmly in addr_family_list:

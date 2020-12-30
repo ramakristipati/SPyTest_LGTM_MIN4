@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 dir=$(dirname $0)
 dir=$(cd $dir;pwd -P)
@@ -100,7 +100,7 @@ if [ "$LINT_DAILY" == "1" ]; then
   REPORT=daily_lint_report.log
   ERR_FILE=daily_lint_errors.log
   #IGNORE2="$IGNORE2 --disable=W0611" #unused-import
-  #IGNORE2="$IGNORE2 --disable=W0612" #unused-variable
+  IGNORE2="$IGNORE2 --disable=W0612" #unused-variable
   IGNORE2="$IGNORE2 --disable=W0106" #expression-not-assigned
   exclude="__init__.py ddm/ tests/ut/ tests/systb/ scheduler/ tests/dell"
 fi

@@ -3,12 +3,11 @@
 
 import copy
 
-from spytest import st, utils, putils
-from spytest.dicts import SpyTestDict
+from spytest import st, tgapi, cutils, putils, SpyTestDict
+
 import apis.routing.ip as ipapi
 import apis.routing.bgp as bgpapi
 import apis.system.interface as ifapi
-from spytest.tgen.tg import tgen_obj_dict
 import BGP.bgplib as bgplib
 
 sp_topo = SpyTestDict()
@@ -1583,7 +1582,7 @@ class BGPSP:
 
     @staticmethod
     def bgp_sp_get_matching_entries(entries=[], match=None):
-         matched_entries = utils.filter_and_select(entries, None, match)
+         matched_entries = cutils.filter_and_select(entries, None, match)
          if not matched_entries:
              st.log("\nBGP SP no match {} in\n {}\n".format(match, entries))
          else :
@@ -1612,7 +1611,7 @@ class BGPSP:
 
         for route_prefix in route_prefix_list:
             match = {'network': route_prefix}
-            entries = utils.filter_and_select(show_output, None, match)
+            entries = cutils.filter_and_select(show_output, None, match)
             #st.log("\nBGP SP filtered entries \n {}\n".format(entries))
             if entries:
                 matched_entries += entries
@@ -2432,7 +2431,7 @@ class BGPSP:
 
         for dut in dut_list :
             tb_dut = sp_topo[dut]['device']
-            tg = tgen_obj_dict[tb_dut]
+            tg = tgapi.get_chassis_byname(tb_dut)
 
             for link_name, link_data in sp_topo[dut]['intf'].items():
                 if link_data['type'] == 'LBK':
@@ -2524,7 +2523,7 @@ class BGPSP:
         link_data = sp_topo[dut]['intf'][link_name]
         tb_if = link_data['if']
 
-        tg = tgen_obj_dict[tb_dut]
+        tg = tgapi.get_chassis_byname(tb_dut)
         tg_port_handle = tg.get_port_handle(tb_if)
 
         for afmly in addr_family_list:
